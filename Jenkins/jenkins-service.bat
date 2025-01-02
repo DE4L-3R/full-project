@@ -1,42 +1,23 @@
 @echo off
-echo Deploying Jenkins to Kubernetes...
+chcp 65001 > nul
 
 REM Store the original directory
 set "ORIGINAL_DIR=%CD%"
 
-echo.
-echo Creating devops namespace if not exists...
-kubectl create namespace devops --dry-run=client -o yaml | kubectl apply -f -
+echo Jenkins 서비스 배포 중...
+
+REM Create namespace if it doesn't exist
+kubectl create namespace devops 2>nul
+
+REM Create service account and RBAC resources
+kubectl apply -f k8s/jenkins-admin.yaml
+
+REM Apply Kubernetes configurations
+kubectl apply -f k8s/jenkins-deployment.yaml
+kubectl apply -f k8s/jenkins-service.yaml
 
 echo.
-echo Applying RBAC configurations...
-kubectl apply -f "%~dp0k8s\jenkins-admin.yaml"
-if %errorlevel% neq 0 (
-    echo Failed to apply RBAC configuration
-    cd "%ORIGINAL_DIR%"
-    exit /b %errorlevel%
-)
-
-echo.
-echo Deploying Jenkins...
-kubectl apply -f "%~dp0k8s\jenkins-deployment.yaml"
-if %errorlevel% neq 0 (
-    echo Failed to deploy Jenkins
-    cd "%ORIGINAL_DIR%"
-    exit /b %errorlevel%
-)
-
-echo.
-echo Applying Jenkins service...
-kubectl apply -f "%~dp0k8s\jenkins-service.yaml"
-if %errorlevel% neq 0 (
-    echo Failed to create service
-    cd "%ORIGINAL_DIR%"
-    exit /b %errorlevel%
-)
-
-echo.
-echo Waiting for Jenkins pod to be ready...
+echo Jenkins Pod 준비 상태 확인 중...
 :wait_pod
 for /f "tokens=1,2,3 delims= " %%a in ('kubectl get pods -l app^=jenkins -n devops ^| findstr "jenkins"') do (
     set "POD_NAME=%%a"
@@ -46,38 +27,36 @@ for /f "tokens=1,2,3 delims= " %%a in ('kubectl get pods -l app^=jenkins -n devo
 if "%STATUS%"=="Running" (
     goto :pod_ready
 )
-echo Current status: %READY% containers ready ^| Pod status: %STATUS%
-echo Waiting for Jenkins to be ready...
+echo 현재 상태: %READY% 컨테이너 준비됨 ^| Pod 상태: %STATUS%
+echo Jenkins 준비 중...
 timeout /t 5 /nobreak > nul
 goto :wait_pod
 
 :pod_ready
 echo.
-echo Jenkins pod is ready!
+echo Jenkins Pod가 준비되었습니다!
 
 echo.
-echo Getting Jenkins initial admin password...
+echo Jenkins 서비스가 배포되었습니다:
+echo - NodePort 접속 주소: http://localhost:30800
+echo - JNLP 포트: 30850 (Jenkins 에이전트 연결용)
+echo.
+echo.
+echo 초기 관리자 패스워드 확인 중...
 for /f "tokens=1" %%i in ('kubectl get pods -l app^=jenkins -n devops -o jsonpath^="{.items[0].metadata.name}"') do (
-    echo Initial admin password:
+    echo 초기 패스워드:
     kubectl exec -n devops %%i -- cat /var/jenkins_home/secrets/initialAdminPassword
 )
-
 echo.
-echo Setting up port-forward for Jenkins...
-start /B kubectl port-forward svc/jenkins -n devops 8080:8080
-
-echo.
-echo Jenkins is available at http://localhost:8080
-echo Please configure the following:
-echo 1. Install suggested plugins
-echo 2. Create admin user
-echo 3. Create a new pipeline with the following settings:
-echo    - Name: wargame-web-deploy
-echo    - Type: Pipeline
+echo 다음 단계를 진행해주세요:
+echo 1. 추천 플러그인 설치
+echo 2. 관리자 계정 생성
+echo 3. 새 파이프라인 생성:
+echo    - 이름: wargame-web-deploy
+echo    - 유형: Pipeline
 echo    - Pipeline script from SCM
 echo    - SCM: Git
 echo    - Repository URL: https://github.com/kimbeomjun90/devsecops_full.git
 echo    - Script Path: Jenkins/pipeline/Jenkinsfile
 
-cd "%ORIGINAL_DIR%"
-endlocal
+cd /d "%ORIGINAL_DIR%"

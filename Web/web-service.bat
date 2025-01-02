@@ -34,9 +34,9 @@ set "IMAGE_NAME=wargame-web:latest"
 set "TEMP_TAR=%ORIGINAL_DIR%\temp-image.tar"
 
 REM Check if web_wargamer directory exists
-if exist "%PROJECT_ROOT%\web_wargamer" (
+if exist "%PROJECT_ROOT%\devsecops_web" (
     echo Repository exists, updating...
-    cd "%PROJECT_ROOT%\web_wargamer"
+    cd "%PROJECT_ROOT%\devsecops_web"
     git pull
     if %errorlevel% neq 0 (
         echo Failed to update repository
@@ -52,7 +52,7 @@ if exist "%PROJECT_ROOT%\web_wargamer" (
         cd "%ORIGINAL_DIR%"
         exit /b %errorlevel%
     )
-    cd web_wargamer
+    cd devsecops_web
 )
 
 echo.
@@ -99,29 +99,29 @@ del "!TEMP_TAR!" 2>nul
 
 echo.
 echo Applying Kubernetes configurations...
-cd "%PROJECT_ROOT%"
-kubectl apply -f web_wargamer/k8s/db-init-configmap.yaml
+cd "%PROJECT_ROOT%\devsecops_web"
+kubectl apply -f k8s/db-init-configmap.yaml
 if %errorlevel% neq 0 (
     echo Failed to apply database configmap
     cd "%ORIGINAL_DIR%"
     exit /b %errorlevel%
 )
 
-kubectl apply -f web_wargamer/k8s/db-deployment.yaml
+kubectl apply -f k8s/db-deployment.yaml
 if %errorlevel% neq 0 (
     echo Failed to apply database deployment
     cd "%ORIGINAL_DIR%"
     exit /b %errorlevel%
 )
 
-kubectl apply -f web_wargamer/k8s/web-deployment.yaml
+kubectl apply -f k8s/web-deployment.yaml
 if %errorlevel% neq 0 (
     echo Failed to apply web deployment
     cd "%ORIGINAL_DIR%"
     exit /b %errorlevel%
 )
 
-kubectl apply -f web_wargamer/k8s/services.yaml
+kubectl apply -f k8s/services.yaml
 if %errorlevel% neq 0 (
     echo Failed to apply services
     cd "%ORIGINAL_DIR%"
@@ -138,5 +138,20 @@ kubectl get pods
 echo.
 echo Checking service status...
 kubectl get services
+
+echo Checking if Docker is running...
+docker info > nul 2>&1
+if %errorlevel% neq 0 (
+    echo Docker is not running. Starting Docker...
+    start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    timeout /t 10 /nobreak > nul
+    echo Checking Docker status again...
+    docker info > nul 2>&1
+    if %errorlevel% neq 0 (
+        echo ERROR: Docker still not running. Please start Docker manually.
+        exit /b 1
+    )
+)
+echo Docker is running.
 
 endlocal

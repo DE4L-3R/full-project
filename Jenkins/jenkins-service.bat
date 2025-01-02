@@ -17,13 +17,38 @@ if %errorlevel% neq 0 (
 )
 
 echo.
+echo Creating devops namespace if not exists...
+kubectl create namespace devops --dry-run=client -o yaml | kubectl apply -f -
+
+echo.
+echo Applying RBAC configurations...
+kubectl apply -f "%~dp0k8s\jenkins-rbac.yaml"
+if %errorlevel% neq 0 (
+    echo Failed to apply RBAC configuration
+    cd "%ORIGINAL_DIR%"
+    exit /b %errorlevel%
+)
+
+echo.
+echo Applying Jenkins ConfigMap...
+kubectl apply -f "%~dp0k8s\jenkins-config.yaml"
+if %errorlevel% neq 0 (
+    echo Failed to apply Jenkins ConfigMap
+    cd "%ORIGINAL_DIR%"
+    exit /b %errorlevel%
+)
+
+echo.
 echo Checking for ngrok auth token...
 kubectl get secret ngrok-credentials > nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: ngrok-credentials secret not found
-    echo Please create the secret with your ngrok auth token:
-    echo kubectl create secret generic ngrok-credentials --from-literal=auth-token=your-token
-    exit /b 1
+    echo Creating ngrok credentials secret...
+    kubectl apply -f "%~dp0k8s\ngrok-secret.yaml"
+    if %errorlevel% neq 0 (
+        echo Failed to create ngrok secret
+        cd "%ORIGINAL_DIR%"
+        exit /b %errorlevel%
+    )
 )
 
 echo.

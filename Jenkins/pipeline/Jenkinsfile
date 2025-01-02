@@ -1,0 +1,84 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+                apiVersion: v1
+                kind: Pod
+                metadata:
+                  labels:
+                    app: jenkins-agent
+                spec:
+                  nodeSelector:
+                    node-type: jenkins
+                  containers:
+                  - name: kubectl
+                    image: bitnami/kubectl:latest
+                    command:
+                    - cat
+                    tty: true
+            '''
+        }
+    }
+
+    environment {
+        DOCKER_IMAGE = 'redrayn/wargame'
+        KUBE_CONFIG = credentials('kube-config')
+    }
+
+    stages {
+        stage('Check Docker Image Update') {
+            steps {
+                container('kubectl') {
+                    script {
+                        def imageInfo = sh(
+                            script: '''
+                                curl -s "https://hub.docker.com/v2/repositories/redrayn/wargame/tags/latest"
+                            ''',
+                            returnStdout: true
+                        )
+                        
+                        def currentDigest = sh(
+                            script: '''
+                                kubectl get deployment wargame-web -o=jsonpath='{.spec.template.spec.containers[0].image}'
+                            ''',
+                            returnStdout: true
+                        )
+
+                        if (imageInfo.contains(currentDigest)) {
+                            echo "이미지가 최신 상태입니다."
+                            currentBuild.result = 'SUCCESS'
+                            return
+                        }
+                        
+                        echo "새로운 이미지가 감지되었습니다. 업데이트를 진행합니다."
+                        env.UPDATE_REQUIRED = 'true'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy Updated Image') {
+            when {
+                environment name: 'UPDATE_REQUIRED', value: 'true'
+            }
+            steps {
+                container('kubectl') {
+                    sh '''
+                        kubectl apply -f k8s/web-deployment.yaml
+                        kubectl apply -f k8s/services.yaml
+                        kubectl rollout status deployment/wargame-web
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '파이프라인이 성공적으로 완료되었습니다.'
+        }
+        failure {
+            echo '파이프라인 실행 중 오류가 발생했습니다.'
+        }
+    }
+}

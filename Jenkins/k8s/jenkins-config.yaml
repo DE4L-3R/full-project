@@ -8,9 +8,18 @@ data:
     jenkins:
       systemMessage: "Jenkins configured automatically by Jenkins Configuration as Code plugin"
       numExecutors: 2
-      scmCheckoutRetryCount: 2
-      mode: NORMAL
-      
+      clouds:
+        - kubernetes:
+            name: "kubernetes"
+            serverUrl: "https://kubernetes.default.svc"
+            namespace: "devops"
+            jenkinsUrl: "http://jenkins.devops.svc.cluster.local:8080"
+            jenkinsTunnel: "jenkins.devops.svc.cluster.local:50000"
+            podLabels:
+              - key: "jenkins/agent"
+                value: "true"
+            containerCapStr: "10"
+            
     jobs:
       - script: |
           pipelineJob('wargame-web-deploy') {

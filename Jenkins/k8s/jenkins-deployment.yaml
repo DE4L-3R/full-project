@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jenkins
+  namespace: devops
   labels:
     app: jenkins
 spec:
@@ -87,3 +88,5 @@ spec:
       - name: jenkins-home
         persistentVolumeClaim:
           claimName: jenkins-pvc
+      serviceAccountName: jenkins-admin
+      automountServiceAccountToken: true

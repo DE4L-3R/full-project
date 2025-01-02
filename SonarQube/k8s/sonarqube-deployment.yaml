@@ -13,6 +13,8 @@ spec:
       labels:
         app: sonarqube
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: devsecops-cluster-worker2
       containers:
       - name: sonarqube
         image: sonarqube:latest

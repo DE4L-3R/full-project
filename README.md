@@ -41,10 +41,10 @@ DevSecOps 방법론을 적용한 웹 애플리케이션 개발 및 운영 환경
 
 ### 1. Kubernetes 클러스터
 - Kind를 사용한 로컬 Kubernetes 클러스터
-- 3개의 워커 노드 구성
+- 4개의 워커 노드 구성
   - worker1: 웹 서비스 실행
-  - worker2: Jenkins 실행
-  - worker3: ELK 스택 실행
+  - worker2: Jenkins, SonarQube 실행
+  - worker4: ELK 스택 실행 (향후 Wazuh로 변경 예정)
 
 ### 2. Jenkins CI/CD
 - Docker Hub 이미지 변경 감지
@@ -58,7 +58,7 @@ DevSecOps 방법론을 적용한 웹 애플리케이션 개발 및 운영 환경
 - Jenkins 파이프라인 연동
 - 품질 게이트 설정
 
-### 4. ELK 스택
+### 4. ELK 스택 (향후 Wazuh로 변경 예정)
 - 중앙 집중식 로깅
 - 실시간 모니터링
 - 시각화 대시보드
@@ -117,9 +117,9 @@ web-service.bat
 - 웹 서비스: http://localhost:30080
 
 ## 주의사항
-1. Jenkins는 worker2 노드에서 실행
+1. Jenkins와 SonarQube는 worker2 노드에서 실행
 2. 웹 서비스는 worker1 노드에서 실행
-3. ELK 스택은 worker3 노드에서 실행
+3. ELK 스택은 worker4 노드에서 실행 (향후 Wazuh로 변경 예정)
 4. 각 서비스의 데이터는 기본적으로 emptyDir 사용
 
 ## 참고 자료

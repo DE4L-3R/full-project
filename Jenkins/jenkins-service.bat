@@ -1,20 +1,8 @@
 @echo off
-chcp 65001 > nul
-setlocal enabledelayedexpansion
-
 echo Deploying Jenkins to Kubernetes...
 
 REM Store the original directory
 set "ORIGINAL_DIR=%CD%"
-
-echo.
-echo Checking cluster nodes...
-kubectl get nodes --show-labels | findstr "jenkins"
-if %errorlevel% neq 0 (
-    echo ERROR: No node with purpose=jenkins label found
-    echo Please make sure the cluster is properly configured
-    exit /b 1
-)
 
 echo.
 echo Creating devops namespace if not exists...
@@ -22,7 +10,7 @@ kubectl create namespace devops --dry-run=client -o yaml | kubectl apply -f -
 
 echo.
 echo Applying RBAC configurations...
-kubectl apply -f "%~dp0k8s\jenkins-rbac.yaml"
+kubectl apply -f "%~dp0k8s\jenkins-admin.yaml"
 if %errorlevel% neq 0 (
     echo Failed to apply RBAC configuration
     cd "%ORIGINAL_DIR%"
@@ -30,45 +18,6 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo Applying Jenkins ConfigMap...
-kubectl apply -f "%~dp0k8s\jenkins-config.yaml"
-if %errorlevel% neq 0 (
-    echo Failed to apply Jenkins ConfigMap
-    cd "%ORIGINAL_DIR%"
-    exit /b %errorlevel%
-)
-
-echo.
-echo Checking for ngrok auth token...
-kubectl get secret ngrok-credentials > nul 2>&1
-if %errorlevel% neq 0 (
-    echo Creating ngrok credentials secret...
-    kubectl apply -f "%~dp0k8s\ngrok-secret.yaml"
-    if %errorlevel% neq 0 (
-        echo Failed to create ngrok secret
-        cd "%ORIGINAL_DIR%"
-        exit /b %errorlevel%
-    )
-)
-
-echo.
-echo Cleaning up existing resources...
-kubectl delete deployment,service -l app=jenkins --ignore-not-found=true
-ping -n 6 127.0.0.1 > nul
-
-echo.
-echo Applying Kubernetes configurations...
-
-REM Apply PV and PVC
-echo Creating persistent volume and claim...
-kubectl apply -f "%~dp0k8s\jenkins-pv.yaml"
-if %errorlevel% neq 0 (
-    echo Failed to create persistent volume
-    cd "%ORIGINAL_DIR%"
-    exit /b %errorlevel%
-)
-
-REM Apply Deployment
 echo Deploying Jenkins...
 kubectl apply -f "%~dp0k8s\jenkins-deployment.yaml"
 if %errorlevel% neq 0 (
@@ -77,8 +26,8 @@ if %errorlevel% neq 0 (
     exit /b %errorlevel%
 )
 
-REM Apply Service
-echo Creating Jenkins service...
+echo.
+echo Applying Jenkins service...
 kubectl apply -f "%~dp0k8s\jenkins-service.yaml"
 if %errorlevel% neq 0 (
     echo Failed to create service
@@ -89,61 +38,46 @@ if %errorlevel% neq 0 (
 echo.
 echo Waiting for Jenkins pod to be ready...
 :wait_pod
-for /f "tokens=1,2,3 delims= " %%a in ('kubectl get pods -l app^=jenkins ^| findstr "jenkins"') do (
+for /f "tokens=1,2,3 delims= " %%a in ('kubectl get pods -l app^=jenkins -n devops ^| findstr "jenkins"') do (
     set "POD_NAME=%%a"
     set "READY=%%b"
     set "STATUS=%%c"
 )
-if "%READY%"=="2/2" (
-    if "%STATUS%"=="Running" (
-        goto :pod_ready
-    )
+if "%STATUS%"=="Running" (
+    goto :pod_ready
 )
 echo Current status: %READY% containers ready ^| Pod status: %STATUS%
-echo Waiting for both Jenkins and Ngrok containers to be ready...
-ping -n 6 127.0.0.1 > nul
+echo Waiting for Jenkins to be ready...
+timeout /t 5 /nobreak > nul
 goto :wait_pod
 
 :pod_ready
 echo.
 echo Jenkins pod is ready!
 
-REM Wait a bit for Jenkins to initialize
-ping -n 11 127.0.0.1 > nul
-
 echo.
 echo Getting Jenkins initial admin password...
-for /f "tokens=1" %%i in ('kubectl get pods -l app^=jenkins -o jsonpath^="{.items[0].metadata.name}"') do (
+for /f "tokens=1" %%i in ('kubectl get pods -l app^=jenkins -n devops -o jsonpath^="{.items[0].metadata.name}"') do (
     echo Initial admin password:
-    kubectl exec %%i -c jenkins -- cat /var/jenkins_home/secrets/initialAdminPassword
+    kubectl exec -n devops %%i -- cat /var/jenkins_home/secrets/initialAdminPassword
 )
 
 echo.
-echo Jenkins is available at:
-echo - Web UI: http://localhost:8080
-echo - JNLP : localhost:50000
+echo Setting up port-forward for Jenkins...
+start /B kubectl port-forward svc/jenkins -n devops 8080:8080
 
 echo.
-echo Waiting for Ngrok tunnel to be established...
-ping -n 11 127.0.0.1 > nul
-
-echo.
-echo Ngrok tunnel information:
-for /f "tokens=1" %%i in ('kubectl get pods -l app^=jenkins -o jsonpath^="{.items[0].metadata.name}"') do (
-    echo Ngrok logs:
-    kubectl logs %%i -c ngrok | findstr "url="
-)
-
-echo.
-echo Setup completed successfully!
-echo.
-echo Jenkins URLs:
-echo - Local  : http://localhost:8080
-for /f "tokens=1" %%i in ('kubectl get pods -l app^=jenkins -o jsonpath^="{.items[0].metadata.name}"') do (
-    for /f "tokens=2 delims==" %%u in ('kubectl logs %%i -c ngrok ^| findstr "url="') do (
-        echo - Public : %%u
-    )
-)
+echo Jenkins is available at http://localhost:8080
+echo Please configure the following:
+echo 1. Install suggested plugins
+echo 2. Create admin user
+echo 3. Create a new pipeline with the following settings:
+echo    - Name: wargame-web-deploy
+echo    - Type: Pipeline
+echo    - Pipeline script from SCM
+echo    - SCM: Git
+echo    - Repository URL: https://github.com/kimbeomjun90/devsecops_full.git
+echo    - Script Path: Jenkins/pipeline/Jenkinsfile
 
 cd "%ORIGINAL_DIR%"
 endlocal

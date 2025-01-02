@@ -1,68 +1,36 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml '''
-                apiVersion: v1
-                kind: Pod
-                metadata:
-                  labels:
-                    app: jenkins-agent
-                spec:
-                  containers:
-                  - name: kubectl
-                    image: bitnami/kubectl:latest
-                    command:
-                    - cat
-                    tty: true
-            '''
-        }
-    }
+    agent any
     
     environment {
-        DOCKER_IMAGE = 'redrayn/wargame'  // 수정된 도커허브 이미지 주소
+        DOCKER_IMAGE = 'redrayn/wargame'
     }
     
     stages {
         stage('Check Docker Image Update') {
             steps {
-                container('kubectl') {
-                    script {
-                        // 도커허브에서 최신 이미지 정보 확인
-                        def imageInfo = sh(
-                            script: """
-                                curl -s "https://hub.docker.com/v2/repositories/${DOCKER_IMAGE}/tags/latest"
-                            """,
-                            returnStdout: true
-                        )
-                        
-                        // 현재 배포된 이미지 정보 확인
-                        def currentImage = sh(
-                            script: 'kubectl get deployment wargame-web -o=jsonpath=\'{.spec.template.spec.containers[0].image}\'',
-                            returnStdout: true
-                        ).trim()
-                        
-                        // 이미지가 다르면 업데이트 필요
-                        if (!imageInfo.contains(currentImage)) {
-                            env.UPDATE_REQUIRED = 'true'
-                            echo "새로운 이미지가 감지되었습니다. 업데이트를 진행합니다."
-                        } else {
-                            echo "이미지가 최신 상태입니다."
-                        }
+                script {
+                    def imageInfo = sh(
+                        script: """
+                            curl -s "https://hub.docker.com/v2/repositories/${DOCKER_IMAGE}/tags/latest"
+                        """,
+                        returnStdout: true
+                    )
+                    
+                    if (imageInfo.contains('digest')) {
+                        env.UPDATE_REQUIRED = 'true'
+                        echo "새로운 Docker 이미지가 감지되었습니다."
                     }
                 }
             }
         }
         
-        stage('Deploy Updated Image') {
+        stage('Deploy Web Application') {
             when {
                 environment name: 'UPDATE_REQUIRED', value: 'true'
             }
             steps {
-                container('kubectl') {
-                    sh '''
-                        kubectl apply -f k8s/web-deployment.yaml
-                        kubectl rollout status deployment/wargame-web
-                    '''
+                dir('Web') {
+                    bat 'web-service.bat'
                 }
             }
         }
@@ -70,11 +38,10 @@ pipeline {
     
     post {
         success {
-            echo '파이프라인이 성공적으로 완료되었습니다.'
+            echo '웹 애플리케이션이 성공적으로 배포되었습니다.'
         }
         failure {
-            echo '파이프라인 실행 중 오류가 발생했습니다.'
+            echo '배포 중 오류가 발생했습니다.'
         }
     }
 }
-

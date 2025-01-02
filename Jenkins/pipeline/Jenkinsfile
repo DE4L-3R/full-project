@@ -3,9 +3,33 @@ pipeline {
     
     environment {
         DOCKER_IMAGE = 'redrayn/wargame'
+        SONAR_HOST_URL = 'http://sonarqube:9000'
     }
     
     stages {
+        stage('Checkout') {
+            steps {
+                // GitHub에서 소스코드 가져오기
+                git 'https://github.com/kimbeomjun90/devsecops_full.git'
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    // SonarQube 스캐너 실행
+                    sh """
+                        sonar-scanner \
+                        -Dsonar.projectKey=wargame \
+                        -Dsonar.sources=Web/src \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.login=admin \
+                        -Dsonar.password=admin
+                    """
+                }
+            }
+        }
+        
         stage('Check Docker Image Update') {
             steps {
                 script {
@@ -42,6 +66,15 @@ pipeline {
         }
         failure {
             echo '배포 중 오류가 발생했습니다.'
+        }
+        always {
+            // SonarQube 품질 게이트 확인
+            script {
+                def qg = waitForQualityGate()
+                if (qg.status != 'OK') {
+                    error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                }
+            }
         }
     }
 }

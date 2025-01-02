@@ -114,10 +114,26 @@ web-service.bat
 ```
 
 ## 접속 정보
-- Jenkins: http://localhost:8080
-- SonarQube: http://localhost:30900
-- Kibana: http://localhost:5601
-- 웹 서비스: http://localhost:30080
+### 서비스 엔드포인트
+| 서비스 | URL | 포트(내부/외부) | 설명 |
+|--------|-----|-----------------|------|
+| Jenkins UI | http://localhost:30800 | 8080/30800 | CI/CD 파이프라인 관리 |
+| Jenkins JNLP | - | 50000/30850 | Jenkins 에이전트 통신 |
+| SonarQube | http://localhost:30900 | 9000/30900 | 코드 품질 분석 |
+| Kibana | http://localhost:30601 | 5601/30601 | 로그 시각화 |
+| Elasticsearch | http://localhost:30920 | 9200/30920 | 검색 & 분석 엔진 |
+| Logstash | - | 5044/5044 | 로그 수집 |
+| 웹 서비스 | http://localhost:30080 | 30080/30080 | 메인 웹 애플리케이션 |
+
+## 노드 구성
+| 노드 | 용도 | 레이블 |
+|------|------|---------|
+| worker1 | 웹서버 | node-type: webserver |
+| worker2 | Jenkins/SonarQube | node-type: jenkins |
+| worker3 | 백업 DB | node-type: backup-db |
+| worker4 | ELK 스택 | node-type: elk |
+| worker5 | 로그 DB | node-type: log-db |
+| worker6 | 웹 DB | node-type: web-db |
 
 ## 주의사항
 1. Jenkins와 SonarQube는 worker2 노드에서 실행
@@ -127,3 +143,14 @@ web-service.bat
 
 ## 참고 자료
 - https://github.com/GH6679/web_wargamer.git (웹 서비스 소스)
+
+## 포트 구성
+| 서비스 | 내부 포트 | 외부 포트 | 설명 |
+|--------|-----------|------------|------|
+| 웹 서비스 | 30080 | 30080 | 웹 애플리케이션 접근용 |
+| Jenkins UI | 8080 | 30800 | Jenkins 웹 인터페이스 |
+| Jenkins JNLP | 50000 | 30850 | Jenkins 에이전트 통신 |
+| SonarQube | 9000 | 30900 | 코드 품질 분석 도구 |
+| Kibana | 5601 | 30601 | 로그 시각화 도구 |
+| Elasticsearch | 9200 | 30920 | 검색 엔진 & 데이터 저장소 |
+| Logstash | 5044 | 5044 | 로그 수집기 |

@@ -23,7 +23,20 @@ spec:
         volumeMounts:
         - name: sonarqube-data
           mountPath: /opt/sonarqube/data
+        - name: sonarqube-config
+          mountPath: /opt/sonarqube/conf/sonar.properties
+          subPath: sonar.properties
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
       volumes:
       - name: sonarqube-data
         persistentVolumeClaim:
           claimName: sonarqube-pvc
+      - name: sonarqube-config
+        configMap:
+          name: sonarqube-config

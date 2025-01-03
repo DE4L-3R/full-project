@@ -46,7 +46,7 @@ if exist "%PROJECT_ROOT%\devsecops_web" (
 ) else (
     echo Cloning repository...
     cd "%PROJECT_ROOT%"
-    git clone https://github.com/DE4L-3R/devsecops-web.git
+    git clone --branch master https://github.com/DE4L-3R/devsecops-web.git
     if %errorlevel% neq 0 (
         echo Failed to clone repository
         cd "%ORIGINAL_DIR%"
@@ -57,7 +57,7 @@ if exist "%PROJECT_ROOT%\devsecops_web" (
 
 echo.
 echo Building Docker image...
-docker build -t !IMAGE_NAME! .
+docker build -t !IMAGE_NAME! -f "%PROJECT_ROOT%\devsecops-web\Dockerfile" "%PROJECT_ROOT%\devsecops-web"
 if %errorlevel% neq 0 (
     echo Failed to build Docker image
     cd "%ORIGINAL_DIR%"
@@ -99,7 +99,7 @@ del "!TEMP_TAR!" 2>nul
 
 echo.
 echo Applying Kubernetes configurations...
-cd "%PROJECT_ROOT%\devsecops_web"
+cd "%PROJECT_ROOT%\devsecops-web"
 kubectl apply -f k8s/db-init-configmap.yaml
 if %errorlevel% neq 0 (
     echo Failed to apply database configmap

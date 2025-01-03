@@ -46,7 +46,7 @@ if exist "%PROJECT_ROOT%\devsecops_web" (
 ) else (
     echo Cloning repository...
     cd "%PROJECT_ROOT%"
-    git clone https://github.com/kimbeomjun90/devsecops_web.git
+    git clone https://github.com/DE4L-3R/devsecops-web.git
     if %errorlevel% neq 0 (
         echo Failed to clone repository
         cd "%ORIGINAL_DIR%"

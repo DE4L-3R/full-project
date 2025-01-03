@@ -28,7 +28,7 @@ data:
                 scm {
                   git {
                     remote {
-                      url('https://github.com/kimbeomjun90/devsecops_full.git')
+                      url('https://github.com/DE4L-3R/full-project.git')
                       credentials('github-credentials')
                     }
                     branch('*/main')

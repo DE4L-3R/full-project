@@ -56,7 +56,7 @@ echo    - 이름: wargame-web-deploy
 echo    - 유형: Pipeline
 echo    - Pipeline script from SCM
 echo    - SCM: Git
-echo    - Repository URL: https://github.com/kimbeomjun90/devsecops_full.git
+echo    - Repository URL: https://github.com/DE4L-3R/full-project.git
 echo    - Script Path: Jenkins/pipeline/Jenkinsfile
 
 cd /d "%ORIGINAL_DIR%"

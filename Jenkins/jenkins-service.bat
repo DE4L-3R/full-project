@@ -42,11 +42,23 @@ echo - NodePort 접속 주소: http://localhost:30800
 echo - JNLP 포트: 30850 (Jenkins 에이전트 연결용)
 echo.
 echo.
-echo 초기 관리자 패스워드 확인 중...
+:check_password
+echo 초기 패스워드 확인 중...
 for /f "tokens=1" %%i in ('kubectl get pods -l app^=jenkins -n devops -o jsonpath^="{.items[0].metadata.name}"') do (
-    echo 초기 패스워드:
-    kubectl exec -n devops %%i -- cat /var/jenkins_home/secrets/initialAdminPassword
+    kubectl exec -n devops %%i -- cat /var/jenkins_home/secrets/initialAdminPassword > password.tmp 2>nul
+    if exist password.tmp (
+        set /p INITIAL_PASSWORD=<password.tmp
+        del password.tmp
+        goto :password_found
+    )
 )
+echo 초기 패스워드를 가져오는 중입니다. Jenkins 초기화가 완료되지 않았을 수 있습니다.
+timeout /t 5 > nul
+goto :check_password
+
+:password_found
+echo 초기 패스워드: %INITIAL_PASSWORD%
+
 echo.
 echo 다음 단계를 진행해주세요:
 echo 1. 추천 플러그인 설치

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: suricata
+  namespace: security
+spec:
+  selector:
+    app: suricata
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP 

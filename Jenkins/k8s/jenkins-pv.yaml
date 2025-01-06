@@ -5,21 +5,20 @@ metadata:
   labels:
     type: local
 spec:
-  storageClassName: standard
+  storageClassName: manual
   capacity:
     storage: 10Gi
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: "/mnt/data/jenkins-volume"
+    path: "/data/jenkins-volume"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: jenkins-pvc
-  namespace: devops
 spec:
-  storageClassName: standard
+  storageClassName: manual
   accessModes:
     - ReadWriteOnce
   resources:

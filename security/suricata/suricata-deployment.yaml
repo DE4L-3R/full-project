@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: suricata
+  namespace: security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: suricata
+  template:
+    metadata:
+      labels:
+        app: suricata
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: worker4
+      hostNetwork: true
+      containers:
+      - name: suricata
+        image: jasonish/suricata:latest
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["NET_ADMIN", "NET_RAW"]
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+        env:
+          - name: SURICATA_OPTIONS
+            value: "-i eth0 -v"
+        volumeMounts:
+        - name: suricata-config
+          mountPath: /etc/suricata
+        - name: suricata-logs
+          mountPath: /var/log/suricata
+        - name: var-run-suricata
+          mountPath: /var/run/suricata
+        - name: host-net
+          mountPath: /host/net
+          readOnly: true
+      volumes:
+      - name: suricata-config
+        configMap:
+          name: suricata-config
+      - name: suricata-logs
+        hostPath:
+          path: /var/log/suricata
+          type: DirectoryOrCreate
+      - name: var-run-suricata
+        hostPath:
+          path: /var/run/suricata
+          type: DirectoryOrCreate
+      - name: host-net
+        hostPath:
+          path: /proc/net
+          type: Directory 

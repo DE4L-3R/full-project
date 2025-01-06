@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: wazuh-manager
+  namespace: security
+spec:
+  serviceName: wazuh-cluster
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wazuh-manager
+  template:
+    metadata:
+      labels:
+        app: wazuh-manager
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: worker4
+      containers:
+        - name: wazuh-manager
+          image: wazuh/wazuh-manager:4.7.2
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 1
+              memory: 1Gi
+            limits:
+              cpu: 2
+              memory: 2Gi
+          ports:
+            - containerPort: 1515
+              name: registration
+            - containerPort: 1514
+              name: events
+            - containerPort: 55000
+              name: api
+            - containerPort: 1516
+              name: cluster
+          env:
+            - name: WAZUH_MANAGER_NAME
+              value: "wazuh-manager-master"
+            - name: NODE_TYPE
+              value: "master"
+          volumeMounts:
+            - name: wazuh-manager-config
+              mountPath: /wazuh-config-mount
+            - name: wazuh-manager-storage
+              mountPath: /var/ossec/data
+            - name: wazuh-logs
+              mountPath: /var/ossec/logs
+      volumes:
+        - name: wazuh-manager-config
+          configMap:
+            name: wazuh-manager-config
+        - name: wazuh-logs
+          hostPath:
+            path: /var/log/wazuh
+  volumeClaimTemplates:
+    - metadata:
+        name: wazuh-manager-storage
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 50Gi 
